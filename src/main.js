@@ -1,51 +1,66 @@
 import { app,BrowserWindow,dialog,ipcMain,shell } from "electron";
+import { execFile } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { readFile,writeFile } from "node:fs/promises";
 import { cpus,freemem,platform,totalmem } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { APP_VERSION,DEFAULT_API_URL,DEFAULT_NODE_URL,MINER_PROTOCOL,PLANCK_NETWORK,createMinerAuthHeaders,miningStats,normalizeApiUrl,normalizeNodeUrl,rewardAddress,validateInnerHash,validateResources } from "./miner-core.js";
-import { createEncryptedWallet,signWormholeTransfer,unlockWallet } from "./wallet-core.js";
+import { promisify } from "node:util";
+import { Worker } from "node:worker_threads";
+import { APP_VERSION,DEFAULT_API_URL,DEFAULT_NODE_URL,MINER_PROTOCOL,PLANCK_NETWORK,miningStats,normalizeApiUrl,normalizeNodeUrl,rewardAddress,validateInnerHash,validateResources } from "./miner-core.js";
+import { createEncryptedWallet,signMiningSubmission,signMiningWorkRequest,signWormholeTransfer,unlockWallet } from "./wallet-core.js";
 
-const directory=fileURLToPath(new URL(".",import.meta.url));
-let windowRef=null,mining=false,timer=null,session=null,activeWallet=null,cachedHardware=null;
+const directory=fileURLToPath(new URL(".",import.meta.url)),execFileAsync=promisify(execFile);
+let windowRef=null,mining=false,timer=null,session=null,activeWallet=null,cachedHardware=null,workers=new Set(),stopView=null,gpuRequest=null;
+let cpuHashrate=0,gpuHashrate=0;
+let previousCpuTimes=null;
 const emit=payload=>{if(windowRef&&!windowRef.isDestroyed())windowRef.webContents.send("miner:update",payload)};
 const publicWallet=(wallet,recoveryPhrase)=>({transparentAddress:wallet.transparent.address,wormholeAddress:wallet.wormhole.address,innerHash:wallet.wormhole.innerHash,recoveryPhrase});
 
-async function request(base,path,{method="GET",body="",authToken="",protocol=false}={}){
- const headers={"content-type":"application/json",...(protocol?{"x-korek-miner-protocol":MINER_PROTOCOL,...createMinerAuthHeaders(authToken,{method,path,body})}:{})};
+async function request(base,path,{method="GET",body=""}={}){
+ const headers={"content-type":"application/json","x-korek-miner-protocol":MINER_PROTOCOL};
  const response=await fetch(`${base}${path}`,{method,body:body||undefined,headers,signal:AbortSignal.timeout(10_000)}),data=await response.json();
  if(response.status===426)throw new Error(`${data.error}. Install matching KOREK Node and Miner versions.`);
- if(response.status===401)throw new Error(`${data.error}. Check the authentication token and system time.`);
+ if(response.status===401)throw new Error(`${data.error}. Unlock the wallet that owns this reward address and check system time.`);
  if(!response.ok)throw new Error(data.error||`Node returned HTTP ${response.status}`);
  return data;
 }
-async function status(base,authToken=""){const normalized=normalizeNodeUrl(base),data=await request(normalized,"/status",{authToken,protocol:true});if(data.networkId!==PLANCK_NETWORK)throw new Error(`Wrong network: ${data.networkId||"unknown"}`);if(data.minerProtocol!==MINER_PROTOCOL)throw new Error(`Protocol mismatch: ${data.minerProtocol||"unknown"}`);return data}
+async function status(base){const normalized=normalizeNodeUrl(base),data=await request(normalized,"/api/status");if(data.networkId!==PLANCK_NETWORK)throw new Error(`Wrong network: ${data.networkId||"unknown"}`);if(data.minerProtocol!==MINER_PROTOCOL)throw new Error(`Protocol mismatch: ${data.minerProtocol||"unknown"}`);return data}
 function apiCandidates({apiUrl,nodeUrl,nodeStatus}={}){const candidates=[];const add=value=>{try{const normalized=normalizeApiUrl(value);if(!candidates.includes(normalized))candidates.push(normalized)}catch{}};add(apiUrl);if(nodeUrl){try{const derived=new URL(normalizeNodeUrl(nodeUrl));derived.port=String(nodeStatus?.apiPort||8365);add(derived.origin)}catch{}}add(DEFAULT_API_URL);return candidates}
 async function apiRequest(input,path,options){let lastError;const candidates=apiCandidates(input);for(const base of candidates)try{return{...(await request(base,path,options)),apiUrl:base}}catch(error){lastError=error}throw new Error("Blockchain API unavailable at "+candidates.join(" or ")+". Check the blockchain API endpoint and your network connection. "+(lastError?.message||""))}
 async function balance(input,address){return apiRequest(input,"/api/balance/"+address)}
 function schedule(delay){clearTimeout(timer);if(mining)timer=setTimeout(mineOnce,delay)}
+function stopWorkers(){if(stopView)Atomics.store(stopView,0,1);for(const worker of workers)worker.terminate();workers.clear();stopView=null}
+function solveCpu(template,threads){return new Promise((resolve,reject)=>{const stopBuffer=new SharedArrayBuffer(4);stopView=new Int32Array(stopBuffer);let completed=0,totalHashes=0,settled=false;const rates=new Map();const finish=result=>{if(settled)return;settled=true;stopWorkers();if(!result)return reject(new Error("CPU nonce range exhausted without a valid proof"));resolve({...result,hashesTried:totalHashes+(result.hashes||0),device:`${threads} CPU`})};for(let index=0;index<threads;index++){const worker=new Worker(new URL("./cpu-worker.js",import.meta.url),{workerData:{challenge:template.challenge,difficulty:template.difficulty,startNonce:template.nonceStart+index,endNonce:template.nonceEnd,stride:threads,stopBuffer}});workers.add(worker);worker.on("message",message=>{if(message.type==="rate"){session.hashes+=message.hashes;rates.set(index,Math.round(message.hashes/(message.elapsedMs/1000)));cpuHashrate=[...rates.values()].reduce((sum,rate)=>sum+rate,0);emit({type:"hashrate",cpuHashrate,gpuHashrate,totalHashes:session.hashes})}else if(message.type==="found")finish(message);else if(message.type==="done"){totalHashes+=message.hashes;if(++completed===threads)finish(null)}});worker.on("error",error=>{if(!settled){settled=true;stopWorkers();reject(error)}});worker.on("exit",code=>{workers.delete(worker);if(code!==0&&mining&&!settled){settled=true;stopWorkers();reject(new Error(`CPU worker stopped with code ${code}`))}})}})}
+function solveGpu(template){return new Promise((resolve,reject)=>{if(!windowRef||windowRef.isDestroyed())return reject(new Error("GPU renderer unavailable"));const requestId=randomUUID(),timeout=setTimeout(()=>{if(gpuRequest?.requestId===requestId){gpuRequest=null;reject(new Error("GPU worker timed out"))}},Math.max(5_000,template.expiresAt-Date.now()+2_000));gpuRequest={requestId,resolve:result=>{clearTimeout(timeout);gpuRequest=null;result?.nonce!==undefined?resolve({...result,device:"WebGPU"}):reject(new Error(result?.error||"GPU did not find a proof"))},reject};windowRef.webContents.send("miner:gpu-work",{requestId,template})})}
+async function solveWork(template,resources){const attempts=[solveCpu(template,resources.cpuThreads)];if(resources.gpuIds.length)attempts.push(solveGpu(template));try{const proof=await Promise.any(attempts);stopWorkers();if(gpuRequest){windowRef.webContents.send("miner:gpu-cancel",{requestId:gpuRequest.requestId});gpuRequest=null}return proof}finally{stopWorkers()}}
 async function mineOnce(){
  if(!mining||!session)return;
  const began=Date.now();
  try{
-  const current=await status(session.nodeUrl,session.authToken);emit({type:"status",status:current});
+  const current=await status(session.nodeUrl);emit({type:"status",status:current});
   if(current.sync?.state!=="Idle"){emit({type:"paused",message:`Node state is ${current.sync?.state||"unknown"}; mining paused`});return schedule(2000)}
-  const body=JSON.stringify({rewardsInnerHash:session.innerHash}),block=await request(session.nodeUrl,"/mine",{method:"POST",body,authToken:session.authToken,protocol:true});
-  session.blocks++;session.totalAtomic+=BigInt(block.reward);
+  const workRequest=signMiningWorkRequest(activeWallet),template=await request(session.nodeUrl,"/miner/v3/work",{method:"POST",body:JSON.stringify(workRequest)});
+  emit({type:"work",template:{height:template.height,difficulty:template.difficulty,expiresAt:template.expiresAt}});
+  const proof=await solveWork(template,session.resources);if(!mining||!proof)return;
+  const wait=Math.max(0,template.notBefore-Date.now());if(wait)await new Promise(resolve=>setTimeout(resolve,wait));if(!mining)return;
+  const submission=signMiningSubmission(activeWallet,{templateId:template.templateId,nonce:proof.nonce,powHash:proof.powHash,hashesTried:proof.hashesTried,device:proof.device}),accepted=await request(session.nodeUrl,"/miner/v3/submit",{method:"POST",body:JSON.stringify(submission)}),block=accepted.block;
+  const minerPayout=BigInt(block.minerReward??block.reward)+BigInt(block.feePayout||0);session.blocks++;session.totalAtomic+=minerPayout;
   const stats=miningStats(session.blocks,session.totalAtomic,session.startedAt),account=await balance({...session,nodeStatus:current},session.rewardAddress).catch(()=>null);
   if(account?.apiUrl)session.apiUrl=account.apiUrl;
-  emit({type:"block",block,stats,rewardAddress:session.rewardAddress,balance:account?.balance??null,resources:session.resources});
-  schedule(Math.max(100,(current.rewardBlockTimeMs||1000)-(Date.now()-began)));
- }catch(error){emit({type:"error",message:error.message});schedule(3000)}
+  emit({type:"block",block,minerPayout:minerPayout.toString(),stats,rewardAddress:session.rewardAddress,balance:account?.balance??null,resources:session.resources});
+  schedule(Math.max(25,(current.rewardBlockTimeMs||1000)-(Date.now()-began)));
+ }catch(error){stopWorkers();if(/stale|expired|duplicate/i.test(error.message)){session.rejected++;emit({type:"rejected",message:error.message,rejected:session.rejected});schedule(100)}else{emit({type:"error",message:error.message});schedule(3000)}}
 }
-function stop(){mining=false;clearTimeout(timer);timer=null;session=null;emit({type:"stopped"});return{mining:false}}
+function stop(){mining=false;clearTimeout(timer);timer=null;stopWorkers();cpuHashrate=0;gpuHashrate=0;if(gpuRequest&&windowRef){windowRef.webContents.send("miner:gpu-cancel",{requestId:gpuRequest.requestId});gpuRequest=null}session=null;emit({type:"stopped"});return{mining:false}}
 async function hardware(){
  if(cachedHardware)return cachedHardware;
  let gpuInfo={};try{gpuInfo=await app.getGPUInfo("basic")}catch{}
  const devices=(gpuInfo.gpuDevice||[]).map((item,index)=>({id:`gpu-${index}-${item.vendorId||0}-${item.deviceId||0}`,name:item.deviceString||`GPU ${index+1} (${item.vendorId||"unknown"}:${item.deviceId||"unknown"})`,vendorId:item.vendorId||0,deviceId:item.deviceId||0,active:index===0}));
- cachedHardware={platform:platform(),cpu:cpus()[0]?.model||"Unknown CPU",threads:cpus().length,memoryTotal:totalmem(),memoryFree:freemem(),gpu:devices,engine:{cpu:"node-side prototype",gpu:"detected; worker engine pending"}};
+ cachedHardware={platform:platform(),cpu:cpus()[0]?.model||"Unknown CPU",threads:cpus().length,memoryTotal:totalmem(),memoryFree:freemem(),gpu:devices,engine:{cpu:"local worker threads",gpu:"WebGPU capability check required"}};
  return cachedHardware;
 }
+async function telemetry(){const totals=cpus().reduce((sum,cpu)=>{const total=Object.values(cpu.times).reduce((a,b)=>a+b,0);sum.idle+=cpu.times.idle;sum.total+=total;return sum},{idle:0,total:0}),delta=previousCpuTimes?{idle:totals.idle-previousCpuTimes.idle,total:totals.total-previousCpuTimes.total}:null;previousCpuTimes=totals;const cpuPercent=delta&&delta.total?Math.max(0,Math.min(100,100*(1-delta.idle/delta.total))):0;let gpu=[];try{const{stdout}=await execFileAsync("nvidia-smi",["--query-gpu=index,name,utilization.gpu,temperature.gpu,power.draw","--format=csv,noheader,nounits"],{timeout:2000,windowsHide:true});gpu=stdout.trim().split(/\r?\n/).filter(Boolean).map(line=>{const[index,name,utilization,tempC,powerW]=line.split(",").map(value=>value.trim());return{index:Number(index),name,utilization:Number(utilization),tempC:Number(tempC),powerW:Number(powerW)}})}catch{}return{timestamp:Date.now(),cpuPercent,gpu,capabilities:{cpuUtilization:true,gpuTelemetry:gpu.length>0,temperature:gpu.some(x=>Number.isFinite(x.tempC)),power:gpu.some(x=>Number.isFinite(x.powerW))}}}
 async function saveWallet(password,mnemonic){
  const made=createEncryptedWallet(password,mnemonic),selected=await dialog.showSaveDialog({title:"Save encrypted KOREK mining wallet",defaultPath:`korek-wallet-${made.wallet.wormhole.address.slice(-8)}.krkwallet`,filters:[{name:"KOREK Wallet",extensions:["krkwallet"]}]});
  if(selected.canceled)return{canceled:true};
@@ -58,18 +73,21 @@ function createWindow(){
  windowRef.webContents.setWindowOpenHandler(({url})=>{if(url.startsWith("https://github.com/Korek-Network/"))shell.openExternal(url);return{action:"deny"}});
 }
 
-ipcMain.handle("miner:status",(_event,{base,authToken})=>status(base,authToken));
+ipcMain.handle("miner:status",(_event,{base})=>status(base));
 ipcMain.handle("miner:start",async(_event,input)=>{
  if(mining)throw new Error("Miner is already running");
- const nodeUrl=normalizeNodeUrl(input.nodeUrl||DEFAULT_NODE_URL),apiUrl=normalizeApiUrl(input.apiUrl||DEFAULT_API_URL),innerHash=activeWallet?.wormhole.innerHash||validateInnerHash(input.innerHash),nodeStatus=await status(nodeUrl,input.authToken||"");
+ const nodeUrl=normalizeNodeUrl(input.nodeUrl||DEFAULT_NODE_URL),apiUrl=normalizeApiUrl(input.apiUrl||DEFAULT_API_URL),innerHash=activeWallet?.wormhole.innerHash||validateInnerHash(input.innerHash),nodeStatus=await status(nodeUrl);
  if(nodeStatus.sync?.state!=="Idle")throw new Error(`Node is ${nodeStatus.sync?.state||"not ready"}`);
  const resources=validateResources(input,await hardware());
- session={nodeUrl,apiUrl,innerHash,authToken:input.authToken||"",rewardAddress:rewardAddress(innerHash),resources,startedAt:Date.now(),blocks:0,totalAtomic:0n};
+ cpuHashrate=0;gpuHashrate=0;session={nodeUrl,apiUrl,innerHash,rewardAddress:rewardAddress(innerHash),resources,startedAt:Date.now(),blocks:0,rejected:0,hashes:0,totalAtomic:0n};
  mining=true;emit({type:"started",nodeStatus,rewardAddress:session.rewardAddress,resources,startedAt:session.startedAt});mineOnce();
  return{mining:true,rewardAddress:session.rewardAddress,nodeStatus,resources};
 });
 ipcMain.handle("miner:stop",stop);
 ipcMain.handle("miner:hardware",hardware);
+ipcMain.handle("miner:telemetry",telemetry);
+ipcMain.handle("miner:gpu-result",(_event,result)=>{if(gpuRequest&&result.requestId===gpuRequest.requestId)gpuRequest.resolve(result);return true});
+ipcMain.handle("miner:gpu-progress",(_event,result)=>{if(session&&gpuRequest&&result.requestId===gpuRequest.requestId){session.hashes+=result.hashes;gpuHashrate=Math.round(result.hashes/(result.elapsedMs/1000));emit({type:"hashrate",cpuHashrate,gpuHashrate,totalHashes:session.hashes})}return true});
 ipcMain.handle("wallet:create",(_event,password)=>saveWallet(password));
 ipcMain.handle("wallet:restore",(_event,{password,mnemonic})=>saveWallet(password,mnemonic));
 ipcMain.handle("wallet:open",async(_event,password)=>{const selected=await dialog.showOpenDialog({title:"Open KOREK wallet",properties:["openFile"],filters:[{name:"KOREK Wallet",extensions:["krkwallet","json"]}]});if(selected.canceled)return{canceled:true};activeWallet=unlockWallet(JSON.parse(await readFile(selected.filePaths[0],"utf8")),password);return{...publicWallet(activeWallet),path:selected.filePaths[0]}});
