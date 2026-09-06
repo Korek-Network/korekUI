@@ -4,6 +4,8 @@
 
 Professional desktop CPU/WebGPU miner and reward wallet for the KOREK Planck testnet.
 
+Planck currently tests the proposed mainnet economics: zero genesis premine, 210 million KRK maximum supply, 60-second reward blocks, 95% of every subsidy to the successful miner, 5% to the public testnet treasury, and 100% of accumulated transaction fees to the next successful miner.
+
 ## Download
 
 Download Windows, Linux, Apple Silicon Mac, or Intel Mac packages from [KOREK Miner releases](https://github.com/Korek-Network/korekUI/releases/tag/korekui-testnet-latest).
