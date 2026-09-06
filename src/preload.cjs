@@ -1,0 +1,2 @@
+const {contextBridge,ipcRenderer}=require("electron");
+contextBridge.exposeInMainWorld("korekMiner",{status:base=>ipcRenderer.invoke("miner:status",base),start:input=>ipcRenderer.invoke("miner:start",input),stop:()=>ipcRenderer.invoke("miner:stop"),hardware:()=>ipcRenderer.invoke("miner:hardware"),version:()=>ipcRenderer.invoke("app:version"),onUpdate:callback=>ipcRenderer.on("miner:update",(_event,payload)=>callback(payload))});

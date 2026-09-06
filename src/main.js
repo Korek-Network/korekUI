@@ -1,0 +1,21 @@
+import { app,BrowserWindow,ipcMain,shell } from "electron";
+import { cpus,freemem,platform,totalmem } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { APP_VERSION,DEFAULT_NODE_URL,MINER_PROTOCOL,PLANCK_NETWORK,miningStats,normalizeNodeUrl,rewardAddress,validateInnerHash } from "./miner-core.js";
+
+const directory=fileURLToPath(new URL(".",import.meta.url));let windowRef=null,mining=false,timer=null,session=null;
+const emit=(payload)=>{if(windowRef&&!windowRef.isDestroyed())windowRef.webContents.send("miner:update",payload)};
+async function request(base,path,options={}){const response=await fetch(`${base}${path}`,{...options,headers:{"content-type":"application/json","x-korek-miner-protocol":MINER_PROTOCOL,...options.headers},signal:AbortSignal.timeout(10_000)}),data=await response.json();if(response.status===426)throw new Error(`${data.error}. Node and KOREK UI versions must match.`);if(!response.ok)throw new Error(data.error||`Node returned HTTP ${response.status}`);return data}
+async function status(base){const normalized=normalizeNodeUrl(base),data=await request(normalized,"/status");if(data.networkId!==PLANCK_NETWORK)throw new Error(`Wrong network: ${data.networkId||"unknown"}`);if(data.minerProtocol!==MINER_PROTOCOL)throw new Error(`Protocol mismatch: ${data.minerProtocol||"unknown"}`);return data}
+function schedule(delay){clearTimeout(timer);if(mining)timer=setTimeout(mineOnce,delay)}
+async function mineOnce(){if(!mining||!session)return;const began=Date.now();try{const current=await status(session.nodeUrl);emit({type:"status",status:current});if(current.sync?.state!=="Idle"){emit({type:"paused",message:`Node state is ${current.sync?.state||"unknown"}; mining paused`});return schedule(2000)}const block=await request(session.nodeUrl,"/mine",{method:"POST",body:JSON.stringify({rewardsInnerHash:session.innerHash})});session.blocks++;session.totalAtomic+=BigInt(block.reward);const stats=miningStats(session.blocks,session.totalAtomic,session.startedAt);emit({type:"block",block,stats,rewardAddress:session.rewardAddress});schedule(Math.max(100,(current.rewardBlockTimeMs||1000)-(Date.now()-began)))}catch(error){emit({type:"error",message:error.message});schedule(3000)}}
+function stop(){mining=false;clearTimeout(timer);timer=null;emit({type:"stopped"});return{mining:false}}
+function createWindow(){windowRef=new BrowserWindow({width:1180,height:780,minWidth:920,minHeight:650,backgroundColor:"#050a0d",title:"KOREK Miner",webPreferences:{preload:join(directory,"preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true}});windowRef.removeMenu();windowRef.loadFile(join(directory,"renderer","index.html"));windowRef.webContents.setWindowOpenHandler(({url})=>{if(url.startsWith("https://github.com/Korek-Network/"))shell.openExternal(url);return{action:"deny"}})}
+
+ipcMain.handle("miner:status",(_event,base)=>status(base));
+ipcMain.handle("miner:start",async(_event,input)=>{if(mining)throw new Error("Miner is already running");const nodeUrl=normalizeNodeUrl(input.nodeUrl||DEFAULT_NODE_URL),innerHash=validateInnerHash(input.innerHash),nodeStatus=await status(nodeUrl);if(nodeStatus.sync?.state!=="Idle")throw new Error(`Node is ${nodeStatus.sync?.state||"not ready"}`);session={nodeUrl,innerHash,rewardAddress:rewardAddress(innerHash),startedAt:Date.now(),blocks:0,totalAtomic:0n};mining=true;emit({type:"started",nodeStatus,rewardAddress:session.rewardAddress,startedAt:session.startedAt});mineOnce();return{mining:true,rewardAddress:session.rewardAddress,nodeStatus}});
+ipcMain.handle("miner:stop",stop);
+ipcMain.handle("miner:hardware",async()=>{let gpu={};try{gpu=await app.getGPUInfo("basic")}catch{}return{platform:platform(),cpu:cpus()[0]?.model||"Unknown CPU",threads:cpus().length,memoryTotal:totalmem(),memoryFree:freemem(),gpu:gpu.gpuDevice?.map(item=>item.deviceString||`${item.vendorId}:${item.deviceId}`).filter(Boolean)||[],mode:"Planck CPU/protocol prototype"}});
+ipcMain.handle("app:version",()=>APP_VERSION);
+app.whenReady().then(createWindow);app.on("window-all-closed",()=>{stop();if(platform()!=="darwin")app.quit()});app.on("activate",()=>{if(BrowserWindow.getAllWindows().length===0)createWindow()});
