@@ -1,5 +1,8 @@
 # KOREK Miner UI
 
+[![Build KOREK Miner UI](https://github.com/Korek-Network/korekUI/actions/workflows/build.yml/badge.svg)](https://github.com/Korek-Network/korekUI/actions/workflows/build.yml)
+
+
 Cross-platform desktop mining dashboard for the KOREK Planck testnet. It connects to the miner-protocol port of a KOREK node, verifies the matching protocol version, submits mining work, and displays blocks, session rewards, rate, node height, hardware information, and activity logs.
 
 ## Download
