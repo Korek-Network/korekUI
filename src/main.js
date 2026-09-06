@@ -45,10 +45,10 @@ async function mineOnce(){
   const proof=await solveWork(template,session.resources);if(!mining||!proof)return;
   const wait=Math.max(0,template.notBefore-Date.now());if(wait)await new Promise(resolve=>setTimeout(resolve,wait));if(!mining)return;
   const submission=signMiningSubmission(activeWallet,{templateId:template.templateId,nonce:proof.nonce,powHash:proof.powHash,hashesTried:proof.hashesTried,device:proof.device}),accepted=await request(session.nodeUrl,"/miner/v3/submit",{method:"POST",body:JSON.stringify(submission)}),block=accepted.block;
-  session.blocks++;session.totalAtomic+=BigInt(block.reward);
+  const minerPayout=BigInt(block.minerReward??block.reward)+BigInt(block.feePayout||0);session.blocks++;session.totalAtomic+=minerPayout;
   const stats=miningStats(session.blocks,session.totalAtomic,session.startedAt),account=await balance({...session,nodeStatus:current},session.rewardAddress).catch(()=>null);
   if(account?.apiUrl)session.apiUrl=account.apiUrl;
-  emit({type:"block",block,stats,rewardAddress:session.rewardAddress,balance:account?.balance??null,resources:session.resources});
+  emit({type:"block",block,minerPayout:minerPayout.toString(),stats,rewardAddress:session.rewardAddress,balance:account?.balance??null,resources:session.resources});
   schedule(Math.max(25,(current.rewardBlockTimeMs||1000)-(Date.now()-began)));
  }catch(error){stopWorkers();if(/stale|expired|duplicate/i.test(error.message)){session.rejected++;emit({type:"rejected",message:error.message,rejected:session.rejected});schedule(100)}else{emit({type:"error",message:error.message});schedule(3000)}}
 }
