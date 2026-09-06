@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'"><meta name="viewport" content="width=device-width"><title>KOREK Miner</title><link rel="stylesheet" href="style.css"></head>
+<html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'"><meta name="viewport" content="width=device-width"><title>KOREK Miner</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="hardware.css"></head>
 <body>
 <aside>
  <div><div class="logo"><span>K</span>KOREK</div><span class="edition">PLANCK MINER</span></div>
@@ -53,6 +53,10 @@
   <div class="title"><div><p class="eyebrow">COMPUTE PROFILE</p><h2>CPU & GPU allocation</h2><p class="lead">Choose how much hardware KOREK may use. The app detects devices locally and never uploads hardware details.</p></div><button id="rescanHardware">Rescan</button></div>
   <div id="hardwareCards" class="hardware-grid"></div>
   <div class="card allocation"><h3>CPU threads</h3><p>Leave at least one or two threads free for a responsive computer.</p><div class="slider-line"><input id="cpuThreadsHardware" type="range" min="1" max="1" value="1"><b><span id="cpuHardwareValue">1</span> / <span id="cpuMax">1</span></b></div><h3>GPU devices</h3><div id="gpuList" class="gpu-list"></div></div>
+  <div class="card compute-launch">
+   <div><p class="eyebrow">READY TO RUN</p><h3>Start with this compute profile</h3><p id="hardwareMineStatus">Unlock a mining wallet, then start with the selected CPU and GPU devices.</p></div>
+   <div class="controls"><button id="startHardware" class="primary">Set up wallet to mine</button><button id="stopHardware" disabled>Stop mining</button></div>
+  </div>
   <p class="notice"><b>Honest status:</b> GPU discovery and selection work now. GPU hashing is not yet active because Planck still needs a secure work-template/submission protocol and verified GPU kernel. Until then, the node performs proof-of-work.</p>
  </section>
 

@@ -1,6 +1,6 @@
 {
   "name": "korek-miner-ui",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "KOREK Planck testnet desktop miner, hardware controller and reward wallet",
   "author": {
     "name": "KOREK Network",
@@ -66,4 +66,3 @@
     }
   }
 }
-
