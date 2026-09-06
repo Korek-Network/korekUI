@@ -1,6 +1,6 @@
 import { createHash,createHmac,randomBytes } from "node:crypto";
 
-export const APP_VERSION="0.3.3";
+export const APP_VERSION="0.3.4";
 export const MINER_PROTOCOL="korek-planck-miner/3";
 export const PLANCK_NETWORK="korek-planck-testnet-1";
 export const DEFAULT_NODE_URL="https://rpc.planck.korek.network";
@@ -20,7 +20,7 @@ export function applyWorkerRate({message,mining,currentSession,workerSession}){
  workerSession.hashes+=hashes;
  return Math.round(hashes/(elapsedMs/1000));
 }
-export function validateResources(input,hardware){const maxThreads=Math.max(1,Number(hardware?.threads||1)),cpuThreads=Math.max(1,Math.min(maxThreads,Math.trunc(Number(input?.cpuThreads)||1))),known=new Set((hardware?.gpu||[]).filter(device=>device.usable!==false).map(device=>device.id)),gpuIds=[...new Set((input?.gpuIds||[]).filter(id=>known.has(id)))].slice(0,1),gpuIntensity=Math.max(10,Math.min(100,Math.trunc(Number(input?.gpuIntensity)||100)));return{cpuThreads,gpuIds,gpuIntensity}}
+export function validateResources(input,hardware){const maxThreads=Math.max(1,Number(hardware?.threads||1)),requestedThreads=Number(input?.cpuThreads),cpuThreads=Math.max(0,Math.min(maxThreads,Number.isFinite(requestedThreads)?Math.trunc(requestedThreads):1)),known=new Set((hardware?.gpu||[]).filter(device=>device.usable!==false).map(device=>device.id)),gpuIds=[...new Set((input?.gpuIds||[]).filter(id=>known.has(id)))].slice(0,1),gpuIntensity=Math.max(10,Math.min(100,Math.trunc(Number(input?.gpuIntensity)||100)));if(cpuThreads===0&&gpuIds.length===0)throw new Error("Select at least one CPU thread or one GPU");return{cpuThreads,gpuIds,gpuIntensity}}
 export function createMinerAuthHeaders(token,{method="GET",path="/status",body="",timestamp=Date.now(),nonce=randomBytes(16).toString("hex")}={}){if(!token)return{};if(String(token).length<32)throw new Error("Miner authentication token must contain at least 32 characters");const bodyDigest=createHash("sha256").update(body||"").digest("hex"),payload=[method.toUpperCase(),path,String(timestamp),nonce,bodyDigest].join("\n");return{"x-korek-miner-timestamp":String(timestamp),"x-korek-miner-nonce":nonce,"x-korek-miner-signature":createHmac("sha256",token).update(payload).digest("hex")}}
 export const miningRequestMessage=({address,timestamp,requestNonce})=>`korek-miner-v3:work:${address}:${timestamp}:${requestNonce}`;
 export const miningSubmissionMessage=({templateId,nonce,powHash,timestamp})=>`korek-miner-v3:submit:${templateId}:${nonce}:${powHash}:${timestamp}`;

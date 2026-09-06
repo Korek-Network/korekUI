@@ -25,8 +25,8 @@
    <label>Mining authentication <span>(wallet-signed protocol v3)</span><input id="authToken" disabled value="Your unlocked wormhole wallet signs every work request"></label>
    <div class="connection-row"><button id="checkNode">Test connection</button><span id="controlMessage" class="message">Ready to connect</span></div>
    <div class="resource-summary">
-    <div><small>CPU ALLOCATION</small><b><span id="cpuValue">1</span> thread(s)</b></div>
-    <input id="cpuThreads" type="range" min="1" max="1" value="1">
+    <div><small>CPU ALLOCATION</small><b><span id="cpuValue">0</span> thread(s)</b></div>
+    <input id="cpuThreads" type="range" min="0" max="1" value="0">
     <div><small>SELECTED GPUs</small><b id="gpuCount">0 devices</b></div>
     <button class="ghost go-hardware">Configure</button>
    </div>
@@ -52,7 +52,7 @@
  <section class="page" data-page="hardware" hidden>
   <div class="title"><div><p class="eyebrow">COMPUTE PROFILE</p><h2>CPU & GPU allocation</h2><p class="lead">Choose how much hardware KOREK may use. The app detects devices locally and never uploads hardware details.</p></div><button id="rescanHardware">Rescan</button></div>
   <div id="hardwareCards" class="hardware-grid"></div>
-  <div class="card allocation"><h3>CPU threads</h3><p>Leave at least one or two threads free for a responsive computer.</p><div class="slider-line"><input id="cpuThreadsHardware" type="range" min="1" max="1" value="1"><b><span id="cpuHardwareValue">1</span> / <span id="cpuMax">1</span></b></div><h3>GPU device</h3><p>Choose CPU-only or one WebGPU adapter. Chromium cannot safely split one mining job across several physical GPUs yet.</p><div id="gpuList" class="gpu-list"></div><h3>GPU intensity</h3><p>Lower this value to leave GPU time for the desktop and other applications.</p><div class="slider-line"><input id="gpuIntensity" type="range" min="10" max="100" step="10" value="100"><b><span id="gpuIntensityValue">100</span>%</b></div><p id="gpuRuntimeStatus" class="message">GPU idle — start mining to test the selected adapter.</p></div>
+  <div class="card allocation"><h3>CPU threads</h3><p>Set this to 0 for GPU-only mining. Leave one or two threads free for a responsive computer.</p><div class="slider-line"><input id="cpuThreadsHardware" type="range" min="0" max="1" value="0"><b><span id="cpuHardwareValue">0</span> / <span id="cpuMax">1</span></b></div><h3>GPU device</h3><p>Choose GPU off or one WebGPU adapter. Set CPU to 0 to test GPU hashrate by itself.</p><div id="gpuList" class="gpu-list"></div><h3>GPU intensity</h3><p>Lower this value to leave GPU time for the desktop and other applications.</p><div class="slider-line"><input id="gpuIntensity" type="range" min="10" max="100" step="10" value="100"><b><span id="gpuIntensityValue">100</span>%</b></div><p id="gpuRuntimeStatus" class="message">GPU idle — start mining to test the selected adapter.</p></div>
   <div class="card compute-launch">
    <div><p class="eyebrow">READY TO RUN</p><h3>Start with this compute profile</h3><p id="hardwareMineStatus">Unlock a mining wallet, then start with the selected CPU and GPU devices.</p></div>
    <div class="controls"><button id="startHardware" class="primary">Set up wallet to mine</button><button id="stopHardware" disabled>Stop mining</button></div>
