@@ -20,7 +20,9 @@ async function request(base,path,{method="GET",body="",authToken="",protocol=fal
  return data;
 }
 async function status(base,authToken=""){const normalized=normalizeNodeUrl(base),data=await request(normalized,"/status",{authToken,protocol:true});if(data.networkId!==PLANCK_NETWORK)throw new Error(`Wrong network: ${data.networkId||"unknown"}`);if(data.minerProtocol!==MINER_PROTOCOL)throw new Error(`Protocol mismatch: ${data.minerProtocol||"unknown"}`);return data}
-async function balance(apiUrl,address){return request(normalizeApiUrl(apiUrl),`/api/balance/${address}`)}
+function apiCandidates({apiUrl,nodeUrl,nodeStatus}={}){const candidates=[];const add=value=>{try{const normalized=normalizeApiUrl(value);if(!candidates.includes(normalized))candidates.push(normalized)}catch{}};add(apiUrl);if(nodeUrl){try{const derived=new URL(normalizeNodeUrl(nodeUrl));derived.port=String(nodeStatus?.apiPort||8365);add(derived.origin)}catch{}}add(DEFAULT_API_URL);return candidates}
+async function apiRequest(input,path,options){let lastError;const candidates=apiCandidates(input);for(const base of candidates)try{return{...(await request(base,path,options)),apiUrl:base}}catch(error){lastError=error}throw new Error("Blockchain API unavailable at "+candidates.join(" or ")+". Check the API endpoint and make sure port 8365 is reachable. "+(lastError?.message||""))}
+async function balance(input,address){return apiRequest(input,"/api/balance/"+address)}
 function schedule(delay){clearTimeout(timer);if(mining)timer=setTimeout(mineOnce,delay)}
 async function mineOnce(){
  if(!mining||!session)return;
@@ -30,7 +32,8 @@ async function mineOnce(){
   if(current.sync?.state!=="Idle"){emit({type:"paused",message:`Node state is ${current.sync?.state||"unknown"}; mining paused`});return schedule(2000)}
   const body=JSON.stringify({rewardsInnerHash:session.innerHash}),block=await request(session.nodeUrl,"/mine",{method:"POST",body,authToken:session.authToken,protocol:true});
   session.blocks++;session.totalAtomic+=BigInt(block.reward);
-  const stats=miningStats(session.blocks,session.totalAtomic,session.startedAt),account=await balance(session.apiUrl,session.rewardAddress).catch(()=>null);
+  const stats=miningStats(session.blocks,session.totalAtomic,session.startedAt),account=await balance({...session,nodeStatus:current},session.rewardAddress).catch(()=>null);
+  if(account?.apiUrl)session.apiUrl=account.apiUrl;
   emit({type:"block",block,stats,rewardAddress:session.rewardAddress,balance:account?.balance??null,resources:session.resources});
   schedule(Math.max(100,(current.rewardBlockTimeMs||1000)-(Date.now()-began)));
  }catch(error){emit({type:"error",message:error.message});schedule(3000)}
@@ -72,8 +75,8 @@ ipcMain.handle("wallet:restore",(_event,{password,mnemonic})=>saveWallet(passwor
 ipcMain.handle("wallet:open",async(_event,password)=>{const selected=await dialog.showOpenDialog({title:"Open KOREK wallet",properties:["openFile"],filters:[{name:"KOREK Wallet",extensions:["krkwallet","json"]}]});if(selected.canceled)return{canceled:true};activeWallet=unlockWallet(JSON.parse(await readFile(selected.filePaths[0],"utf8")),password);return{...publicWallet(activeWallet),path:selected.filePaths[0]}});
 ipcMain.handle("wallet:lock",()=>{stop();activeWallet=null;return true});
 ipcMain.handle("wallet:summary",()=>activeWallet?publicWallet(activeWallet):null);
-ipcMain.handle("wallet:balance",(_event,apiUrl)=>{if(!activeWallet)throw new Error("Create or open a wallet first");return balance(apiUrl,activeWallet.wormhole.address)});
-ipcMain.handle("wallet:send",async(_event,{apiUrl,to,amount})=>{if(!activeWallet)throw new Error("Unlock your wallet first");const transaction=signWormholeTransfer(activeWallet,to,amount);return request(normalizeApiUrl(apiUrl),"/api/transactions",{method:"POST",body:JSON.stringify(transaction)})});
+ipcMain.handle("wallet:balance",(_event,input)=>{if(!activeWallet)throw new Error("Create or open a wallet first");const connection=typeof input==="string"?{apiUrl:input}:input;return balance(connection,activeWallet.wormhole.address)});
+ipcMain.handle("wallet:send",async(_event,{apiUrl,nodeUrl,to,amount})=>{if(!activeWallet)throw new Error("Unlock your wallet first");const transaction=signWormholeTransfer(activeWallet,to,amount);return apiRequest({apiUrl,nodeUrl},"/api/transactions",{method:"POST",body:JSON.stringify(transaction)})});
 ipcMain.handle("app:version",()=>APP_VERSION);
 ipcMain.handle("app:open-wallet",()=>shell.openExternal("https://github.com/Korek-Network/wallet/releases"));
 

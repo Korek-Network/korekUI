@@ -16,6 +16,7 @@ Download Windows, Linux, Apple Silicon Mac, or Intel Mac packages from [KOREK Mi
 - Send KRK from the wormhole reward balance without a separate claim transaction.
 - Detect CPU threads and GPU devices, and save the user's compute allocation.
 - Start and stop mining directly from the Compute Devices page.
+- Automatically discover and remember the reachable blockchain API endpoint for reward balances.
 - Connect to korek-planck-miner/2, including optional HMAC authentication for remote nodes.
 - Show live accepted blocks, session rewards, blocks/minute, node height and activity.
 - Build installers for Windows, Linux, Intel Mac and Apple Silicon Mac.
