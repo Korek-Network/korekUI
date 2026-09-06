@@ -1,10 +1,15 @@
 name: Build KOREK Miner
+
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
+
 permissions:
   contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -15,7 +20,10 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: node --check src/main.js
+      - run: node --check src/cpu-worker.js
       - run: node --check src/renderer/app.js
+      - run: node --check src/renderer/gpu.js
+
   build:
     needs: test
     strategy:
@@ -41,7 +49,9 @@ jobs:
             dist/*.dmg
             dist/*.zip
           if-no-files-found: error
+
   release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -50,7 +60,7 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: korekui-testnet-latest
-          name: KOREK Miner Planck Testnet v0.2.2
+          name: KOREK Miner Planck Testnet v0.3.0
           prerelease: true
           make_latest: false
           files: |
