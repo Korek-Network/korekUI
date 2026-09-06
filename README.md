@@ -2,7 +2,7 @@
 
 [![Build KOREK Miner UI](https://github.com/Korek-Network/korekUI/actions/workflows/build.yml/badge.svg)](https://github.com/Korek-Network/korekUI/actions/workflows/build.yml)
 
-Professional desktop mining control and reward wallet for the KOREK Planck testnet.
+Professional desktop CPU/WebGPU miner and reward wallet for the KOREK Planck testnet.
 
 ## Download
 
@@ -17,7 +17,10 @@ Download Windows, Linux, Apple Silicon Mac, or Intel Mac packages from [KOREK Mi
 - Detect CPU threads and GPU devices, and save the user's compute allocation.
 - Start and stop mining directly from the Compute Devices page.
 - Use the permanent HTTPS Planck RPC for reward balances and network data, while preserving trusted custom endpoints.
-- Connect to korek-planck-miner/2, including optional HMAC authentication for remote nodes.
+- Connect to wallet-signed `korek-planck-miner/3` work-template and proof-submission endpoints.
+- Perform SHA-256 proof-of-work locally in selected CPU worker threads.
+- Use an experimental high-performance WebGPU SHA-256 worker when the system supports WebGPU.
+- Report live CPU/GPU hashrate, accepted/rejected proofs, CPU load, and NVIDIA temperature/power telemetry when `nvidia-smi` is available.
 - Show live accepted blocks, session rewards, blocks/minute, node height and activity.
 - Build installers for Windows, Linux, Intel Mac and Apple Silicon Mac.
 
@@ -35,14 +38,16 @@ Start this desktop app from source:
     npm install
     npm start
 
-Use miner endpoint `http://127.0.0.1:9833`. The blockchain API defaults to `https://rpc.planck.korek.network` so reward balances remain available without exposing your local API.
+The mining gateway and blockchain API default to `https://rpc.planck.korek.network`. Every work request and proof is signed by the unlocked wormhole wallet; no SSH tunnel or shared authentication token is required after the Planck v0.7 node is deployed.
 
 Create or open a wallet, configure compute devices, test the node connection, then select Start mining.
 
-## Important compute status
+## Compute and security status
 
-Version 0.2.2 connects to the live Planck miner protocol and receives real testnet block rewards. The current Planck node still performs proof-of-work after each mining request. CPU/GPU device discovery and allocation are implemented in the app, but client-side CPU/GPU hashing requires the next blockchain protocol milestone: signed work templates, nonce-range assignment, share submission, duplicate/stale-work rejection, and a verified native GPU kernel.
+Version 0.3 performs proof-of-work on the miner computer. CPU hashing uses Node worker threads. GPU hashing uses an experimental WebGPU SHA-256 compute shader and falls back to CPU when WebGPU is unavailable.
 
-The app deliberately reports this status in the interface; it does not fake GPU utilization. The public RPC is for balances and chain data only; mining requires a local KOREK node until a wallet-signed remote work protocol is released.
+The node independently validates wallet ownership, signatures, timestamps, template lifetime, nonce range, SHA-256 proof difficulty, stale work, and duplicate submissions before issuing a reward.
+
+This remains unaudited Planck testnet software. WebGPU availability and hardware telemetry vary by driver and operating system. It must not be represented as mainnet-ready until the protocol and GPU kernel pass independent review.
 
 Testnet KRK has no monetary value. Never share a wallet recovery phrase, wallet password, miner authentication token, or inner hash.
