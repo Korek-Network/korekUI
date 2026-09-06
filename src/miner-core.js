@@ -4,7 +4,7 @@ export const APP_VERSION="0.2.2";
 export const MINER_PROTOCOL="korek-planck-miner/2";
 export const PLANCK_NETWORK="korek-planck-testnet-1";
 export const DEFAULT_NODE_URL="http://127.0.0.1:9833";
-export const DEFAULT_API_URL="http://127.0.0.1:8365";
+export const DEFAULT_API_URL="https://rpc.planck.korek.network";
 
 export function normalizeUrl(value,fallback=DEFAULT_NODE_URL){const url=new URL(String(value||fallback).trim());if(!["http:","https:"].includes(url.protocol))throw new Error("Endpoint must use HTTP or HTTPS");return url.origin}
 export const normalizeNodeUrl=value=>normalizeUrl(value,DEFAULT_NODE_URL);
