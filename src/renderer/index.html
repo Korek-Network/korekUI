@@ -1,11 +1,68 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'"><meta name="viewport" content="width=device-width"><title>KOREK Miner</title><link rel="stylesheet" href="style.css"></head>
-<body><aside><div><div class="logo">KOREK</div><span class="edition">PLANCK MINER</span></div><nav><button class="nav active" data-page="dashboard">Dashboard</button><button class="nav" data-page="hardware">Hardware</button><button class="nav" data-page="logs">Activity log</button><button class="nav" data-page="about">About</button></nav><div class="side-status"><i id="sideDot"></i><span id="sideText">Miner stopped</span></div><a href="https://github.com/Korek-Network/korekUI">GitHub repository ↗</a></aside>
-<main><header><div><small>KOREK MINER</small><strong id="appVersion">v—</strong></div><div class="network"><i id="nodeDot"></i><span id="nodeState">Node not checked</span></div></header>
-<section class="page" data-page="dashboard"><div class="title"><div><p class="eyebrow">MINING CONTROL</p><h1>Planck dashboard</h1><p>Connect to your KOREK node's miner port and credit every reward directly to your wormhole account.</p></div><div class="mode">CPU PROTOTYPE</div></div>
-<div class="config card"><label>Node miner endpoint</label><div class="input-row"><input id="nodeUrl" value="http://127.0.0.1:9833" spellcheck="false"><button id="checkNode">Check</button></div><label>Rewards inner hash</label><input id="innerHash" type="password" maxlength="64" placeholder="64 hexadecimal characters from KOREK Wallet" spellcheck="false"><div class="reward-line"><span>Derived wormhole address</span><code id="rewardAddress">Enter inner hash</code></div><div class="controls"><button id="start" class="primary">Start mining</button><button id="stop" disabled>Stop</button></div><p id="controlMessage" class="message"></p></div>
-<div class="metrics"><article><small>SESSION BLOCKS</small><b id="blocks">0</b></article><article><small>SESSION REWARDS</small><b><span id="rewards">0.00</span> <em>KRK</em></b></article><article><small>BLOCKS / MIN</small><b id="rate">0.00</b></article><article><small>NODE HEIGHT</small><b id="height">—</b></article></div>
-<div class="card current"><div><small>LAST ACCEPTED BLOCK</small><b id="lastBlock">Waiting to start</b></div><span id="elapsed">00:00:00</span></div><p class="warning">Current Planck mining is a testnet CPU/protocol prototype. The node performs proof-of-work after each request; this UI does not yet run GPU or AI kernels.</p></section>
-<section class="page" data-page="hardware" hidden><p class="eyebrow">SYSTEM INFORMATION</p><h2>Detected hardware</h2><div id="hardwareCards" class="hardware-grid"></div><p class="warning">GPU detection is informational until the KOREK useful-compute engine and independently verifiable GPU kernels are implemented.</p></section>
-<section class="page" data-page="logs" hidden><div class="log-title"><div><p class="eyebrow">MINER EVENTS</p><h2>Activity log</h2></div><button id="clearLogs">Clear</button></div><pre id="logs">KOREK Miner ready.</pre></section>
-<section class="page" data-page="about" hidden><p class="eyebrow">ABOUT</p><h2>KOREK Planck Miner</h2><p>This desktop interface uses the version-matched <code>korek-planck-miner/1</code> protocol. Mining rewards are paid directly to the wormhole address derived from your inner hash.</p><ul><li>Testnet KRK has no monetary value.</li><li>The current chain is stored in node memory and resets when the node stops.</li><li>P2P consensus, real syncing, authenticated ALPN, GPU/AI proof verification, and post-quantum signatures are not implemented yet.</li><li>Never share your wallet's 24-word phrase or password.</li></ul><a class="button-link" href="https://github.com/Korek-Network/blockchain/blob/main/docs/MINING_AND_NODE.md">Open mining guide</a></section>
-<footer><span>© KOREK Network</span><span>Planck testnet · No real value</span></footer></main><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'"><meta name="viewport" content="width=device-width"><title>KOREK Miner</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<aside>
+ <div><div class="logo"><span>K</span>KOREK</div><span class="edition">PLANCK MINER</span></div>
+ <nav>
+  <button class="nav active" data-page="dashboard">Overview</button>
+  <button class="nav" data-page="wallet">Mining wallet</button>
+  <button class="nav" data-page="hardware">Compute devices</button>
+  <button class="nav" data-page="rewards">Rewards</button>
+  <button class="nav" data-page="logs">Activity</button>
+  <button class="nav" data-page="about">About</button>
+ </nav>
+ <div class="side-status"><i id="sideDot"></i><span id="sideText">Miner stopped</span></div>
+ <a href="https://github.com/Korek-Network/korekUI">Source code ↗</a>
+</aside>
+<main>
+ <header><div><small>KOREK MINER</small><strong id="appVersion">v—</strong><span class="testnet">PLANCK TESTNET</span></div><div class="network"><i id="nodeDot"></i><span id="nodeState">Node not checked</span></div></header>
+
+ <section class="page" data-page="dashboard">
+  <div class="title"><div><p class="eyebrow">MINING OPERATIONS</p><h1>Compute dashboard</h1><p>Manage your Planck miner, selected hardware and spendable wormhole rewards from one secure desktop app.</p></div><div class="mode">PROTOCOL /2</div></div>
+  <div id="walletBanner" class="wallet-banner card"><div><small>MINING WALLET REQUIRED</small><b>Create or open a wallet to receive rewards</b></div><button class="primary go-wallet">Set up wallet</button></div>
+  <div class="config card">
+   <div class="form-grid"><label>Node miner endpoint<input id="nodeUrl" value="http://127.0.0.1:9833" spellcheck="false"></label><label>Blockchain API endpoint<input id="apiUrl" value="http://127.0.0.1:8365" spellcheck="false"></label></div>
+   <label>Remote authentication token <span>(optional for localhost)</span><input id="authToken" type="password" placeholder="Required for an authenticated remote miner endpoint"></label>
+   <div class="connection-row"><button id="checkNode">Test connection</button><span id="controlMessage" class="message">Ready to connect</span></div>
+   <div class="resource-summary">
+    <div><small>CPU ALLOCATION</small><b><span id="cpuValue">1</span> thread(s)</b></div>
+    <input id="cpuThreads" type="range" min="1" max="1" value="1">
+    <div><small>SELECTED GPUs</small><b id="gpuCount">0 devices</b></div>
+    <button class="ghost go-hardware">Configure</button>
+   </div>
+   <div class="reward-line"><div><span>Reward account</span><code id="rewardAddress">No wallet unlocked</code></div><div class="controls"><button id="start" class="primary" disabled>Start mining</button><button id="stop" disabled>Stop safely</button></div></div>
+  </div>
+  <div class="metrics"><article><small>SPENDABLE BALANCE</small><b><span id="balance">0.00</span> <em>KRK</em></b></article><article><small>SESSION REWARDS</small><b><span id="rewards">0.00</span> <em>KRK</em></b></article><article><small>ACCEPTED BLOCKS</small><b id="blocks">0</b></article><article><small>BLOCKS / MIN</small><b id="rate">0.00</b></article><article><small>NODE HEIGHT</small><b id="height">—</b></article></div>
+  <div class="card blocks-card"><div class="card-heading"><div><small>LIVE RESULTS</small><h3>Accepted blocks</h3></div><span id="elapsed">00:00:00</span></div><div class="table-wrap"><table><thead><tr><th>Block</th><th>Hash</th><th>Reward</th><th>Device plan</th><th>Accepted</th></tr></thead><tbody id="blockRows"><tr class="empty"><td colspan="5">Start mining to see accepted blocks</td></tr></tbody></table></div></div>
+  <p class="notice"><b>Compute status:</b> this release connects to the real Planck miner protocol and records real testnet rewards. The current node still performs the proof-of-work; CPU/GPU selection is saved as the worker plan for the upcoming client-side work protocol.</p>
+ </section>
+
+ <section class="page" data-page="wallet" hidden>
+  <p class="eyebrow">FIRST-RUN SETUP</p><h2>Mining wallet</h2><p class="lead">Create a new encrypted wallet, restore your 24-word phrase, or open an existing <code>.krkwallet</code> file. Private keys remain in the desktop main process.</p>
+  <div id="walletLocked" class="wallet-actions">
+   <article class="card action-card"><span class="step">01</span><h3>Create wallet</h3><p>Generate a new 24-word phrase and encrypted wallet file.</p><input id="createPassword" type="password" placeholder="Password — at least 10 characters"><button id="createWallet" class="primary">Create and save</button></article>
+   <article class="card action-card"><span class="step">02</span><h3>Open wallet</h3><p>Unlock an existing KOREK wallet file from this computer.</p><input id="openPassword" type="password" placeholder="Wallet password"><button id="openWallet">Choose wallet file</button></article>
+   <article class="card action-card wide"><span class="step">03</span><h3>Restore from phrase</h3><p>Use the same 24-word phrase as KOREK Wallet so mining rewards appear in both apps.</p><textarea id="restorePhrase" rows="3" placeholder="Enter all 24 words in order"></textarea><input id="restorePassword" type="password" placeholder="New password — at least 10 characters"><button id="restoreWallet">Restore and save</button></article>
+  </div>
+  <div id="walletOpen" class="card wallet-open" hidden><div class="success-badge">WALLET UNLOCKED</div><h3 id="walletShort">Mining account</h3><dl><dt>Wormhole reward address</dt><dd id="walletAddress"></dd><dt>Transparent address</dt><dd id="transparentAddress"></dd></dl><div class="controls"><button class="primary go-dashboard">Open dashboard</button><button id="lockWallet">Lock wallet</button></div></div>
+  <div id="recoveryBox" class="card recovery" hidden><p class="eyebrow">SHOW ONCE · RECOVERY PHRASE</p><h3>Write these 24 words down offline</h3><p>Anyone with these words controls your KRK. Never paste them into chat, email or a website.</p><div id="recoveryWords" class="words"></div><label class="confirm"><input id="phraseSaved" type="checkbox"> I stored the phrase safely offline</label><button id="hideRecovery" disabled>Hide recovery phrase</button></div>
+  <p id="walletMessage" class="message"></p>
+ </section>
+
+ <section class="page" data-page="hardware" hidden>
+  <div class="title"><div><p class="eyebrow">COMPUTE PROFILE</p><h2>CPU & GPU allocation</h2><p class="lead">Choose how much hardware KOREK may use. The app detects devices locally and never uploads hardware details.</p></div><button id="rescanHardware">Rescan</button></div>
+  <div id="hardwareCards" class="hardware-grid"></div>
+  <div class="card allocation"><h3>CPU threads</h3><p>Leave at least one or two threads free for a responsive computer.</p><div class="slider-line"><input id="cpuThreadsHardware" type="range" min="1" max="1" value="1"><b><span id="cpuHardwareValue">1</span> / <span id="cpuMax">1</span></b></div><h3>GPU devices</h3><div id="gpuList" class="gpu-list"></div></div>
+  <p class="notice"><b>Honest status:</b> GPU discovery and selection work now. GPU hashing is not yet active because Planck still needs a secure work-template/submission protocol and verified GPU kernel. Until then, the node performs proof-of-work.</p>
+ </section>
+
+ <section class="page" data-page="rewards" hidden>
+  <p class="eyebrow">WORMHOLE ACCOUNT</p><h2>Rewards & spending</h2>
+  <div class="reward-hero card"><div><small>AVAILABLE NOW</small><b><span id="rewardBalance">0.00</span> <em>KRK</em></b><code id="rewardPageAddress">Unlock a wallet</code></div><button id="refreshBalance">Refresh balance</button></div>
+  <div class="card send-card"><div><h3>Use mining rewards</h3><p>Rewards are credited directly to your wormhole balance. No separate claim fee or claim transaction is required.</p></div><label>Recipient address<input id="sendTo" placeholder="krk1…"></label><label>Amount (KRK)<input id="sendAmount" inputmode="decimal" placeholder="0.00"></label><button id="sendReward" class="primary">Sign and send from rewards</button><p id="sendMessage" class="message"></p></div>
+ </section>
+
+ <section class="page" data-page="logs" hidden><div class="log-title"><div><p class="eyebrow">LOCAL EVENT STREAM</p><h2>Activity</h2></div><button id="clearLogs">Clear</button></div><pre id="logs">KOREK Miner ready.</pre></section>
+ <section class="page" data-page="about" hidden><p class="eyebrow">ABOUT</p><h2>KOREK Planck Miner</h2><div class="card about-card"><p>Desktop miner and reward wallet for <code>korek-planck-miner/2</code>.</p><ul><li>Wallet files use AES-256-GCM with scrypt and are compatible with KOREK Wallet v2.</li><li>Remote node connections support the node's HMAC-SHA256 authentication token.</li><li>Testnet KRK has no monetary value.</li><li>Do not expose port 9833 publicly without TLS and authentication.</li></ul><div class="controls"><a class="button-link" href="https://github.com/Korek-Network/blockchain/blob/main/docs/MINING_AND_NODE.md">Mining guide</a><a class="button-link" href="https://github.com/Korek-Network/wallet/releases">KOREK Wallet</a></div></div></section>
+ <footer><span>© KOREK Network</span><span>Planck testnet · No real value</span></footer>
+</main><script src="app.js"></script></body></html>

@@ -1,26 +1,46 @@
-# KOREK Miner UI
+# KOREK Miner
 
 [![Build KOREK Miner UI](https://github.com/Korek-Network/korekUI/actions/workflows/build.yml/badge.svg)](https://github.com/Korek-Network/korekUI/actions/workflows/build.yml)
 
-
-Cross-platform desktop mining dashboard for the KOREK Planck testnet. It connects to the miner-protocol port of a KOREK node, verifies the matching protocol version, submits mining work, and displays blocks, session rewards, rate, node height, hardware information, and activity logs.
+Professional desktop mining control and reward wallet for the KOREK Planck testnet.
 
 ## Download
 
-Download Windows, Linux, Apple Silicon Mac, or Intel Mac packages from [KOREK Miner UI releases](https://github.com/Korek-Network/korekUI/releases/tag/korekui-testnet-latest).
+Download Windows, Linux, Apple Silicon Mac, or Intel Mac packages from [KOREK Miner releases](https://github.com/Korek-Network/korekUI/releases/tag/korekui-testnet-latest).
 
-## Use
+## Features
 
-Start a KOREK Planck v0.3 node with a miner port first:
+- Create, restore and open encrypted KOREK wallet v2 files.
+- Display the 24-word recovery phrase once during wallet creation.
+- Receive rewards directly in the wallet's spendable wormhole account.
+- Send KRK from the wormhole reward balance without a separate claim transaction.
+- Detect CPU threads and GPU devices, and save the user's compute allocation.
+- Connect to korek-planck-miner/2, including optional HMAC authentication for remote nodes.
+- Show live accepted blocks, session rewards, blocks/minute, node height and activity.
+- Build installers for Windows, Linux, Intel Mac and Apple Silicon Mac.
 
-```bash
-./korek-node --name my-node --validator --miner-listen-port 9833 --chain planck --node-key-file node_key.p2p --rewards-inner-hash YOUR_INNER_HASH --max-blocks-per-request 64 --sync full
-```
+## Run with a local node
 
-Open KOREK Miner UI, set the endpoint to `http://127.0.0.1:9833`, paste the 64-character inner hash from KOREK Wallet, check the node, and select **Start mining**.
+Start the node:
 
-## Current scope
+    cd ~/blockchain
+    KOREK_PORT=8365 KOREK_MINER_PORT=9833 npm start
 
-This UI controls the current `korek-planck-miner/1` CPU/protocol prototype. It detects hardware for display, but it does not yet execute GPU or AI kernels. Planck state is currently held in node memory. P2P consensus/sync, authenticated ALPN, public telemetry, useful-compute verification, and post-quantum signatures remain future protocol work.
+Start this desktop app from source:
 
-Test KRK has no monetary value. Never share a wallet recovery phrase or password.
+    git clone https://github.com/Korek-Network/korekUI.git
+    cd korekUI
+    npm install
+    npm start
+
+Use miner endpoint http://127.0.0.1:9833 and blockchain API http://127.0.0.1:8365.
+
+Create or open a wallet, configure compute devices, test the node connection, then select Start mining.
+
+## Important compute status
+
+Version 0.2 connects to the live Planck miner protocol and receives real testnet block rewards. The current Planck node still performs proof-of-work after each mining request. CPU/GPU device discovery and allocation are implemented in the app, but client-side CPU/GPU hashing requires the next blockchain protocol milestone: signed work templates, nonce-range assignment, share submission, duplicate/stale-work rejection, and a verified native GPU kernel.
+
+The app deliberately reports this status in the interface; it does not fake GPU utilization.
+
+Testnet KRK has no monetary value. Never share a wallet recovery phrase, wallet password, miner authentication token, or inner hash.

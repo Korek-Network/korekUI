@@ -1,4 +1,4 @@
-name: Build KOREK Miner UI
+name: Build KOREK Miner
 on:
   push:
     branches: [main]
@@ -33,7 +33,7 @@ jobs:
       - run: ${{ matrix.command }}
       - uses: actions/upload-artifact@v4
         with:
-          name: miner-ui-${{ runner.os }}
+          name: miner-${{ runner.os }}
           path: |
             dist/*.exe
             dist/*.AppImage
@@ -50,7 +50,7 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: korekui-testnet-latest
-          name: KOREK Miner UI Planck Testnet v0.1.0
+          name: KOREK Miner Planck Testnet v0.2.0
           prerelease: true
           make_latest: false
           files: |
@@ -59,3 +59,4 @@ jobs:
             artifacts/*.deb
             artifacts/*.dmg
             artifacts/*.zip
+
