@@ -21,8 +21,8 @@
   <div class="title"><div><p class="eyebrow">MINING OPERATIONS</p><h1>Compute dashboard</h1><p>Manage your Planck miner, selected hardware and spendable wormhole rewards from one secure desktop app.</p></div><div class="mode">PROTOCOL /2</div></div>
   <div id="walletBanner" class="wallet-banner card"><div><small>MINING WALLET REQUIRED</small><b>Create or open a wallet to receive rewards</b></div><button class="primary go-wallet">Set up wallet</button></div>
   <div class="config card">
-   <div class="form-grid"><label>Node miner endpoint<input id="nodeUrl" value="http://127.0.0.1:9833" spellcheck="false"></label><label>Blockchain API endpoint<input id="apiUrl" value="https://rpc.planck.korek.network" spellcheck="false"></label></div>
-   <label>Remote authentication token <span>(optional for localhost)</span><input id="authToken" type="password" placeholder="Required for an authenticated remote miner endpoint"></label>
+   <div class="form-grid"><label>Planck mining gateway<input id="nodeUrl" value="https://rpc.planck.korek.network" spellcheck="false"></label><label>Blockchain API endpoint<input id="apiUrl" value="https://rpc.planck.korek.network" spellcheck="false"></label></div>
+   <label>Mining authentication <span>(wallet-signed protocol v3)</span><input id="authToken" disabled value="Your unlocked wormhole wallet signs every work request"></label>
    <div class="connection-row"><button id="checkNode">Test connection</button><span id="controlMessage" class="message">Ready to connect</span></div>
    <div class="resource-summary">
     <div><small>CPU ALLOCATION</small><b><span id="cpuValue">1</span> thread(s)</b></div>
@@ -32,9 +32,9 @@
    </div>
    <div class="reward-line"><div><span>Reward account</span><code id="rewardAddress">No wallet unlocked</code></div><div class="controls"><button id="start" class="primary" disabled>Start mining</button><button id="stop" disabled>Stop safely</button></div></div>
   </div>
-  <div class="metrics"><article><small>SPENDABLE BALANCE</small><b><span id="balance">0.00</span> <em>KRK</em></b></article><article><small>SESSION REWARDS</small><b><span id="rewards">0.00</span> <em>KRK</em></b></article><article><small>ACCEPTED BLOCKS</small><b id="blocks">0</b></article><article><small>BLOCKS / MIN</small><b id="rate">0.00</b></article><article><small>NODE HEIGHT</small><b id="height">—</b></article></div>
+  <div class="metrics"><article><small>SPENDABLE BALANCE</small><b><span id="balance">0.00</span> <em>KRK</em></b></article><article><small>SESSION REWARDS</small><b><span id="rewards">0.00</span> <em>KRK</em></b></article><article><small>ACCEPTED / REJECTED</small><b><span id="blocks">0</span> / <span id="rejected">0</span></b></article><article><small>CPU HASHRATE</small><b><span id="cpuRate">0</span> <em>H/s</em></b></article><article><small>GPU HASHRATE</small><b><span id="gpuRate">0</span> <em>H/s</em></b></article><article><small>CPU LOAD</small><b><span id="cpuLoad">0</span> <em>%</em></b></article><article><small>GPU LOAD / TEMP</small><b><span id="gpuLoad">—</span> <em>%</em> · <span id="gpuTemp">—</span><em>°C</em></b></article><article><small>GPU POWER</small><b><span id="gpuPower">—</span> <em>W</em></b></article><article><small>BLOCKS / MIN</small><b id="rate">0.00</b></article><article><small>NODE HEIGHT</small><b id="height">—</b></article></div>
   <div class="card blocks-card"><div class="card-heading"><div><small>LIVE RESULTS</small><h3>Accepted blocks</h3></div><span id="elapsed">00:00:00</span></div><div class="table-wrap"><table><thead><tr><th>Block</th><th>Hash</th><th>Reward</th><th>Device plan</th><th>Accepted</th></tr></thead><tbody id="blockRows"><tr class="empty"><td colspan="5">Start mining to see accepted blocks</td></tr></tbody></table></div></div>
-  <p class="notice"><b>Compute status:</b> this release connects to the real Planck miner protocol and records real testnet rewards. The current node still performs the proof-of-work; CPU/GPU selection is saved as the worker plan for the upcoming client-side work protocol.</p>
+  <p class="notice"><b>Real testnet compute:</b> protocol v3 sends signed work templates to this computer. Selected CPU workers and an available high-performance WebGPU adapter hash locally; the node rewards only a proof it independently verifies.</p>
  </section>
 
  <section class="page" data-page="wallet" hidden>
@@ -57,7 +57,7 @@
    <div><p class="eyebrow">READY TO RUN</p><h3>Start with this compute profile</h3><p id="hardwareMineStatus">Unlock a mining wallet, then start with the selected CPU and GPU devices.</p></div>
    <div class="controls"><button id="startHardware" class="primary">Set up wallet to mine</button><button id="stopHardware" disabled>Stop mining</button></div>
   </div>
-  <p class="notice"><b>Honest status:</b> GPU discovery and selection work now. GPU hashing is not yet active because Planck still needs a secure work-template/submission protocol and verified GPU kernel. Until then, the node performs proof-of-work.</p>
+  <p class="notice"><b>Planck testnet:</b> CPU hashing uses local worker threads. Selecting a GPU enables the experimental WebGPU SHA-256 worker when supported by Electron, the operating system and graphics driver. Unsupported GPUs fall back to CPU and are reported in Activity.</p>
  </section>
 
  <section class="page" data-page="rewards" hidden>
@@ -67,6 +67,6 @@
  </section>
 
  <section class="page" data-page="logs" hidden><div class="log-title"><div><p class="eyebrow">LOCAL EVENT STREAM</p><h2>Activity</h2></div><button id="clearLogs">Clear</button></div><pre id="logs">KOREK Miner ready.</pre></section>
- <section class="page" data-page="about" hidden><p class="eyebrow">ABOUT</p><h2>KOREK Planck Miner</h2><div class="card about-card"><p>Desktop miner and reward wallet for <code>korek-planck-miner/2</code>.</p><ul><li>Wallet files use AES-256-GCM with scrypt and are compatible with KOREK Wallet v2.</li><li>Remote node connections support the node's HMAC-SHA256 authentication token.</li><li>Testnet KRK has no monetary value.</li><li>Do not expose port 9833 publicly without TLS and authentication.</li></ul><div class="controls"><a class="button-link" href="https://github.com/Korek-Network/blockchain/blob/main/docs/MINING_AND_NODE.md">Mining guide</a><a class="button-link" href="https://github.com/Korek-Network/wallet/releases">KOREK Wallet</a></div></div></section>
+ <section class="page" data-page="about" hidden><p class="eyebrow">ABOUT</p><h2>KOREK Planck Miner</h2><div class="card about-card"><p>Desktop miner and reward wallet for <code>korek-planck-miner/3</code>.</p><ul><li>Wallet files use AES-256-GCM with scrypt and are compatible with KOREK Wallet v2.</li><li>Every work request and accepted proof is signed by the wormhole mining account.</li><li>Testnet KRK has no monetary value.</li><li>The WebGPU kernel and protocol must be independently audited before mainnet.</li></ul><div class="controls"><a class="button-link" href="https://github.com/Korek-Network/blockchain/blob/main/docs/MINING_AND_NODE.md">Mining guide</a><a class="button-link" href="https://github.com/Korek-Network/wallet/releases">KOREK Wallet</a></div></div></section>
  <footer><span>© KOREK Network</span><span>Planck testnet · No real value</span></footer>
-</main><script src="app.js"></script></body></html>
+</main><script src="app.js"></script><script src="gpu.js"></script></body></html>
