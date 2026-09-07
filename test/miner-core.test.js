@@ -10,3 +10,16 @@ test("uses the current Planck protocol",()=>assert.equal(MINER_PROTOCOL,"korek-p
 test("matches the protocol v3 SHA-256 work vector",()=>{assert.equal(powDigest("00".repeat(32),0),"6db65fd59fd356f6729140571b5bcd6bb3b83492a16e1bf0a3884442fc3c8a0e");assert.equal(meetsDifficulty("000abc"+"0".repeat(58),3),true)});
 test("ignores late CPU rate messages after mining stops",()=>{const oldSession={hashes:10},newSession={hashes:20},message={type:"rate",hashes:50,elapsedMs:100};assert.equal(applyWorkerRate({message,mining:false,currentSession:null,workerSession:oldSession}),null);assert.equal(oldSession.hashes,10);assert.equal(applyWorkerRate({message,mining:true,currentSession:newSession,workerSession:oldSession}),null);assert.equal(oldSession.hashes,10);assert.equal(applyWorkerRate({message,mining:true,currentSession:oldSession,workerSession:oldSession}),500);assert.equal(oldSession.hashes,60)});
 test("smooths GPU hashrate across recent completed batches",()=>{assert.equal(rollingHashrate([{hashes:1000,elapsedMs:10},{hashes:1000,elapsedMs:30}]),50000);assert.equal(rollingHashrate([{hashes:1,elapsedMs:100},{hashes:900,elapsedMs:0}]),10);assert.equal(rollingHashrate([]),0)});
+
+test("GPU batch accounting does not skip invocations after a proof is found",async()=>{
+ const {readFile}=await import("node:fs/promises");
+ const source=await readFile(new URL("../src/renderer/gpu.js",import.meta.url),"utf8");
+ assert.ok(!source.includes("atomicLoad(&result[0])!=0u"));
+ assert.ok(source.indexOf("await read.mapAsync")<source.indexOf("hashesTried+=count"));
+});
+test("completed mining work clears both live rates and explains the block wait",async()=>{
+ const {readFile}=await import("node:fs/promises");
+ const source=await readFile(new URL("../src/main.js",import.meta.url),"utf8");
+ assert.ok(source.includes('finally{stopWorkers();cpuHashrate=0;gpuHashrate=0;gpuRateSamples=[];emit'));
+ assert.ok(source.includes("Proof found — waiting for the permitted block time"));
+});
