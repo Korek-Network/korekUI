@@ -2,7 +2,7 @@ import { createHash,createHmac,randomBytes } from "node:crypto";
 
 export const APP_VERSION="0.3.6";
 export const MINER_PROTOCOL="korek-planck-miner/3";
-export const PLANCK_NETWORK="korek-planck-testnet-1";
+export const PLANCK_NETWORK="korek-planck-testnet-2";
 export const DEFAULT_NODE_URL="https://rpc.planck.korek.network";
 export const DEFAULT_API_URL="https://rpc.planck.korek.network";
 

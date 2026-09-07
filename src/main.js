@@ -41,6 +41,7 @@ async function mineOnce(){
   const current=await status(session.nodeUrl);emit({type:"status",status:current});
   if(current.sync?.state!=="Idle"){emit({type:"paused",message:`Node state is ${current.sync?.state||"unknown"}; mining paused`});return schedule(2000)}
   const workRequest=signMiningWorkRequest(activeWallet),template=await request(session.nodeUrl,"/miner/v3/work",{method:"POST",body:JSON.stringify(workRequest)});
+  if(template.networkId!==PLANCK_NETWORK||template.rewardAddress!==activeWallet.wormhole.address||template.publicKey!==activeWallet.wormhole.publicKey)throw new Error("Mining template network or wallet mismatch");
   emit({type:"work",template:{height:template.height,difficulty:template.difficulty,expiresAt:template.expiresAt}});
   const proof=await solveWork(template,session.resources);if(!mining||!proof)return;
   const wait=Math.max(0,template.notBefore-Date.now());if(wait)await new Promise(resolve=>setTimeout(resolve,wait));if(!mining)return;
@@ -95,7 +96,7 @@ ipcMain.handle("wallet:open",async(_event,password)=>{const selected=await dialo
 ipcMain.handle("wallet:lock",()=>{stop();activeWallet=null;return true});
 ipcMain.handle("wallet:summary",()=>activeWallet?publicWallet(activeWallet):null);
 ipcMain.handle("wallet:balance",(_event,input)=>{if(!activeWallet)throw new Error("Create or open a wallet first");const connection=typeof input==="string"?{apiUrl:input}:input;return balance(connection,activeWallet.wormhole.address)});
-ipcMain.handle("wallet:send",async(_event,{apiUrl,nodeUrl,to,amount})=>{if(!activeWallet)throw new Error("Unlock your wallet first");const transaction=signWormholeTransfer(activeWallet,to,amount);return apiRequest({apiUrl,nodeUrl},"/api/transactions",{method:"POST",body:JSON.stringify(transaction)})});
+ipcMain.handle("wallet:send",async(_event,{apiUrl,nodeUrl,to,amount})=>{if(!activeWallet)throw new Error("Unlock your wallet first");const transaction=signWormholeTransfer(activeWallet,to,amount,PLANCK_NETWORK);return apiRequest({apiUrl,nodeUrl},"/api/transactions",{method:"POST",body:JSON.stringify(transaction)})});
 ipcMain.handle("app:version",()=>APP_VERSION);
 ipcMain.handle("app:open-wallet",()=>shell.openExternal("https://github.com/Korek-Network/wallet/releases"));
 
