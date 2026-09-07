@@ -7,6 +7,7 @@
   <button class="nav active" data-page="dashboard">Overview</button>
   <button class="nav" data-page="wallet">Mining wallet</button>
   <button class="nav" data-page="hardware">Compute devices</button>
+  <button class="nav" data-page="node">Node</button>
   <button class="nav" data-page="rewards">Rewards</button>
   <button class="nav" data-page="logs">Activity</button>
   <button class="nav" data-page="about">About</button>
@@ -58,6 +59,13 @@
    <div class="controls"><button id="startHardware" class="primary">Set up wallet to mine</button><button id="stopHardware" disabled>Stop mining</button></div>
   </div>
   <p class="notice"><b>Planck testnet:</b> CPU hashing uses local worker threads. Selecting a GPU enables the experimental WebGPU SHA-256 worker when supported by Electron, the operating system and graphics driver. Unsupported GPUs fall back to CPU and are reported in Activity.</p>
+ </section>
+
+ <section class="page" data-page="node" hidden>
+  <div class="title"><div><p class="eyebrow">NODE OPERATIONS</p><h2>Planck node</h2><p class="lead">Inspect the configured public or local node before mining, synchronizing or operating a validator.</p></div><button id="refreshNode">Refresh status</button></div>
+  <div class="config card"><label>Node endpoint<input id="nodePageUrl" value="https://rpc.planck.korek.network" spellcheck="false"></label><div class="connection-row"><button id="checkNodePage" class="primary">Check node</button><span id="nodePageMessage" class="message">Node not checked</span></div></div>
+  <div class="metrics"><article><small>NODE VERSION</small><b id="nodeVersion">—</b></article><article><small>BLOCK HEIGHT</small><b id="nodeHeight">—</b></article><article><small>CUMULATIVE WORK</small><b id="nodeWork">—</b></article><article><small>CONNECTED PEERS</small><b id="nodePeers">—</b></article><article><small>SYNC STATE</small><b id="nodeSync">—</b></article><article><small>ROLE</small><b id="nodeRole">—</b></article><article><small>PERSISTENT STORAGE</small><b id="nodeStorage">—</b></article><article><small>P2P</small><b id="nodeP2p">—</b></article></div>
+  <p class="notice"><b>Operator safety:</b> this panel is read-only. Starting and stopping a local validator will be enabled only after signed node binaries can be bundled and verified by the app.</p>
  </section>
 
  <section class="page" data-page="rewards" hidden>

@@ -55,12 +55,18 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Point testnet release tag at the tested commit
+        run: |
+          git tag --force korekui-testnet-latest "$GITHUB_SHA"
+          git push --force origin refs/tags/korekui-testnet-latest
       - uses: actions/download-artifact@v4
         with: { path: artifacts, merge-multiple: true }
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: korekui-testnet-latest
-          name: KOREK Miner Planck Testnet v0.3.5
+          name: KOREK Miner Planck Testnet v0.3.6
           prerelease: true
           make_latest: false
           files: |

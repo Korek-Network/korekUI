@@ -23,6 +23,7 @@ Download Windows, Linux, Apple Silicon Mac, or Intel Mac packages from [KOREK Mi
 - Perform SHA-256 proof-of-work locally in selected CPU worker threads.
 - Use an experimental high-performance WebGPU SHA-256 worker when the system supports WebGPU.
 - Report live CPU/GPU hashrate, accepted/rejected proofs, CPU load, and NVIDIA temperature/power telemetry when `nvidia-smi` is available.
+- Inspect node version, height, verified cumulative work, peer count, sync state, validator role, persistence and P2P status from the built-in Node page.
 - Show live accepted blocks, session rewards, blocks/minute, node height and activity.
 - Build installers for Windows, Linux, Intel Mac and Apple Silicon Mac.
 
