@@ -25,11 +25,10 @@
    <div class="form-grid"><label>Planck mining gateway<input id="nodeUrl" value="https://rpc.planck.korek.network" spellcheck="false"></label><label>Blockchain API endpoint<input id="apiUrl" value="https://rpc.planck.korek.network" spellcheck="false"></label></div>
    <label>Mining authentication <span>(wallet-signed protocol v3)</span><input id="authToken" disabled value="Your unlocked wormhole wallet signs every work request"></label>
    <div class="connection-row"><button id="checkNode">Test connection</button><span id="controlMessage" class="message">Ready to connect</span></div>
-   <div class="resource-summary">
-    <div><small>CPU ALLOCATION</small><b><span id="cpuValue">0</span> thread(s)</b></div>
-    <input id="cpuThreads" type="range" min="0" max="1" value="0">
-    <div><small>SELECTED GPUs</small><b id="gpuCount">0 devices</b></div>
-    <button class="ghost go-hardware">Configure</button>
+   <div class="resource-summary compute-pair">
+    <div class="compute-control"><div><small>CPU</small><b><span id="cpuValue">0</span> / <span id="cpuMaxDashboard">1</span> threads</b></div><input id="cpuThreads" type="range" min="0" max="1" value="0"></div>
+    <div class="compute-control"><div><small>GPU</small><b><span id="gpuCount">Off</span> · <span id="gpuDashboardValue">0</span>%</b></div><input id="gpuIntensityDashboard" type="range" min="0" max="100" step="10" value="0"></div>
+    <button class="ghost go-hardware">Hardware details</button>
    </div>
    <div class="reward-line"><div><span>Reward account</span><code id="rewardAddress">No wallet unlocked</code></div><div class="controls"><button id="start" class="primary" disabled>Start mining</button><button id="stop" disabled>Stop safely</button></div></div>
   </div>
@@ -53,7 +52,7 @@
  <section class="page" data-page="hardware" hidden>
   <div class="title"><div><p class="eyebrow">COMPUTE PROFILE</p><h2>CPU & GPU allocation</h2><p class="lead">Choose how much hardware KOREK may use. The app detects devices locally and never uploads hardware details.</p></div><button id="rescanHardware">Rescan</button></div>
   <div id="hardwareCards" class="hardware-grid"></div>
-  <div class="card allocation"><h3>CPU threads</h3><p>Set this to 0 for GPU-only mining. Leave one or two threads free for a responsive computer.</p><div class="slider-line"><input id="cpuThreadsHardware" type="range" min="0" max="1" value="0"><b><span id="cpuHardwareValue">0</span> / <span id="cpuMax">1</span></b></div><h3>GPU device</h3><p>Choose GPU off or one WebGPU adapter. Set CPU to 0 to test GPU hashrate by itself.</p><div id="gpuList" class="gpu-list"></div><h3>GPU intensity</h3><p>Lower this value to leave GPU time for the desktop and other applications.</p><div class="slider-line"><input id="gpuIntensity" type="range" min="10" max="100" step="10" value="100"><b><span id="gpuIntensityValue">100</span>%</b></div><p id="gpuRuntimeStatus" class="message">GPU idle — start mining to test the selected adapter.</p></div>
+  <div class="card allocation"><div class="allocation-pair"><div><h3>CPU</h3><p>0 disables CPU mining. Leave one or two threads free for a responsive computer.</p><div class="slider-line"><input id="cpuThreadsHardware" type="range" min="0" max="1" value="0"><b><span id="cpuHardwareValue">0</span> / <span id="cpuMax">1</span> threads</b></div></div><div><h3>GPU</h3><p id="gpuDeviceDescription">Detecting the preferred physical GPU…</p><div class="slider-line"><input id="gpuIntensity" type="range" min="0" max="100" step="10" value="0"><b><span id="gpuIntensityValue">0</span>%</b></div><p id="gpuRuntimeStatus" class="message">GPU off.</p></div></div></div>
   <div class="card compute-launch">
    <div><p class="eyebrow">READY TO RUN</p><h3>Start with this compute profile</h3><p id="hardwareMineStatus">Unlock a mining wallet, then start with the selected CPU and GPU devices.</p></div>
    <div class="controls"><button id="startHardware" class="primary">Set up wallet to mine</button><button id="stopHardware" disabled>Stop mining</button></div>
@@ -62,10 +61,12 @@
  </section>
 
  <section class="page" data-page="node" hidden>
-  <div class="title"><div><p class="eyebrow">NODE OPERATIONS</p><h2>Planck node</h2><p class="lead">Inspect the configured public or local node before mining, synchronizing or operating a validator.</p></div><button id="refreshNode">Refresh status</button></div>
-  <div class="config card"><label>Node endpoint<input id="nodePageUrl" value="https://rpc.planck.korek.network" spellcheck="false"></label><div class="connection-row"><button id="checkNodePage" class="primary">Check node</button><span id="nodePageMessage" class="message">Node not checked</span></div></div>
-  <div class="metrics"><article><small>NODE VERSION</small><b id="nodeVersion">—</b></article><article><small>BLOCK HEIGHT</small><b id="nodeHeight">—</b></article><article><small>CUMULATIVE WORK</small><b id="nodeWork">—</b></article><article><small>CONNECTED PEERS</small><b id="nodePeers">—</b></article><article><small>SYNC STATE</small><b id="nodeSync">—</b></article><article><small>ROLE</small><b id="nodeRole">—</b></article><article><small>PERSISTENT STORAGE</small><b id="nodeStorage">—</b></article><article><small>P2P</small><b id="nodeP2p">—</b></article></div>
-  <p class="notice"><b>Operator safety:</b> this panel is read-only. Starting and stopping a local validator will be enabled only after signed node binaries can be bundled and verified by the app.</p>
+  <div class="title"><div><p class="eyebrow">NODE OPERATIONS</p><h2>Planck node</h2><p class="lead">See exactly whether this app is connected to somebody else’s node or running its own local node process.</p></div><button id="refreshNode">Refresh live data</button></div>
+  <div class="node-mode card"><div><small>CURRENT MODE</small><strong id="nodeConnectionMode">REMOTE NODE · NOT CONNECTED</strong><p id="nodeModeExplanation">This app is not running a local blockchain node. Connect to a remote Planck endpoint to read and mine.</p></div><span id="localNodeBadge" class="status-badge stopped">LOCAL NODE OFF</span></div>
+  <div class="config card"><label>Remote node endpoint<input id="nodePageUrl" value="https://rpc.planck.korek.network" spellcheck="false"></label><div class="connection-row"><button id="checkNodePage" class="primary">Connect remote node</button><span id="nodePageMessage" class="message">Remote node not connected</span></div></div>
+  <div class="metrics"><article><small>CONNECTION TYPE</small><b id="nodeConnectionType">Remote</b></article><article><small>LOCAL NODE PROCESS</small><b id="nodeLocalProcess">Not running</b></article><article><small>NODE VERSION</small><b id="nodeVersion">—</b></article><article><small>BLOCK HEIGHT</small><b id="nodeHeight">—</b></article><article><small>CUMULATIVE WORK</small><b id="nodeWork">—</b></article><article><small>CONNECTED PEERS</small><b id="nodePeers">—</b></article><article><small>SYNC STATE</small><b id="nodeSync">—</b></article><article><small>REMOTE ROLE</small><b id="nodeRole">—</b></article><article><small>REMOTE STORAGE</small><b id="nodeStorage">—</b></article><article><small>REMOTE P2P</small><b id="nodeP2p">—</b></article></div>
+  <div class="card blocks-card"><div class="card-heading"><div><small>LIVE NODE DATA · AUTO REFRESH</small><h3>Recent blocks</h3></div><span id="nodeLiveHeight">—</span></div><div class="table-wrap"><table><thead><tr><th>Block</th><th>Hash</th><th>Miner</th><th>Reward</th><th>Transactions</th></tr></thead><tbody id="nodeBlockRows"><tr class="empty"><td colspan="5">Connect a remote node to load live blocks</td></tr></tbody></table></div></div>
+  <p class="notice"><b>Clear status:</b> “Connect remote node” only connects this app to an existing node. It does not run a node on this computer. A real local-node start/stop control requires a signed, bundled node runtime and will not be labelled active until its process and P2P status are verified.</p>
  </section>
 
  <section class="page" data-page="rewards" hidden>
