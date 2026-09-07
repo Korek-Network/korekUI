@@ -1,4 +1,7 @@
 node_modules/
 dist/
+node-bundle/
+node-source/
+node-native*
 *.log
 .DS_Store

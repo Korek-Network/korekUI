@@ -31,13 +31,27 @@ jobs:
         include:
           - { os: windows-latest, command: "npm run dist:windows" }
           - { os: ubuntu-latest, command: "npm run dist:linux" }
-          - { os: macos-latest, command: "npm run dist:mac" }
+          - { os: macos-latest, command: "npx electron-builder --mac dmg zip --publish never" }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
+      - uses: actions/checkout@v4
+        with:
+          repository: Korek-Network/blockchain
+          ref: 258a5ab7788107ba830e940525c0db4c18e96e4a
+          path: node-source
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: 1.4.2 }
+      - name: Build native node for this app architecture
+        shell: bash
+        run: |
+          node_output=node-native
+          if [ "$RUNNER_OS" = "Windows" ]; then node_output=node-native.exe; fi
+          bun build node-source/src/server.js --compile --outfile="$node_output"
+          node scripts/bundle-node.mjs "$node_output"
       - run: ${{ matrix.command }}
       - uses: actions/upload-artifact@v4
         with:

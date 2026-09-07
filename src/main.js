@@ -1,3 +1,4 @@
+import { LocalNode } from "./local-node.js";
 import { app,BrowserWindow,dialog,ipcMain,shell } from "electron";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -100,6 +101,11 @@ ipcMain.handle("wallet:send",async(_event,{apiUrl,nodeUrl,to,amount})=>{if(!acti
 ipcMain.handle("app:version",()=>APP_VERSION);
 ipcMain.handle("app:open-wallet",()=>shell.openExternal("https://github.com/Korek-Network/wallet/releases"));
 
+const localNode=new LocalNode(app.isPackaged?join(process.resourcesPath,"node-bundle"):join(directory,"../node-bundle"),join(app.getPath("userData"),"testnet-2-node"));
+ipcMain.handle("node:start",(_event,peer)=>localNode.start(peer));
+ipcMain.handle("node:stop",async()=>{stop();await localNode.stop();return true});
+let quitting=false;
+app.on("before-quit",event=>{if(!quitting){event.preventDefault();stop();localNode.stop().then(()=>{quitting=true;app.quit()}).catch(error=>emit({type:"error",message:error.message}));}});
 app.whenReady().then(createWindow);
 app.on("window-all-closed",()=>{stop();activeWallet=null;if(platform()!=="darwin")app.quit()});
 app.on("activate",()=>{if(BrowserWindow.getAllWindows().length===0)createWindow()});
